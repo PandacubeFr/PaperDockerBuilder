@@ -24,7 +24,6 @@ fi
 PAPER_BUILD=`cat build_number.txt`
 URL_BUILD=$URL_VERSION'/builds/'$PAPER_BUILD
 
-echo "Downloadling Paperclip for Paper-"$MC_VERSION"-"$PAPER_BUILD"..."
 
 DOWNLOAD_REOBF=$URL_BUILD'/downloads/paper-'$MC_VERSION'-'$PAPER_BUILD'.jar'
 
@@ -32,27 +31,33 @@ DOWNLOAD_REOBF=$URL_BUILD'/downloads/paper-'$MC_VERSION'-'$PAPER_BUILD'.jar'
 RUNNABLE_SERVER_JAR='Paper-'$MC_VERSION'-'$PAPER_BUILD'.jar'
 #UBER_SERVER_JAR='Paper-uberjar-'$MC_VERSION'-'$PAPER_BUILD'.jar'
 
+echo "Downloadling Paperclip for Paper-"$MC_VERSION"-"$PAPER_BUILD"..."
+echo "From "$DOWNLOAD_REOBF
+echo "To "$RUNNABLE_SERVER_JAR
 curl -o $RUNNABLE_SERVER_JAR $DOWNLOAD_REOBF
 
 
-java -version
+#java -version
 
 # run it to generate final jar, but not launching the actual server (-v option)
 
-echo "Running Paperclip..."
-mkdir bundle
-(java -DbundlerRepoDir=bundle -jar ../$RUNNABLE_SERVER_JAR -v)
+#echo "Running Paperclip..."
+#mkdir bundle
+#java -DbundlerRepoDir=bundle -Dpaperclip.patchonly=true -jar $RUNNABLE_SERVER_JAR
 
 
 # important that versions/ comes first. It will be extracted first,
 # and following extraction will not override any file
-find bundle/versions/ bundle/libraries/ -type f -name '*.jar' > jars.txt
+#find bundle/versions/ bundle/libraries/ -type f -name '*.jar' > jars.txt
 
 
 DOCKER_TAG="PandacubeFr/paper:"$MC_VERSION"-"$PAPER_BUILD
+echo "Building docker image with pre-downloaded and pre-patched files, with tag "$DOCKER_TAG
+docker build --build-arg RUNNABLE_SERVER_JAR=$RUNNABLE_SERVER_JAR -t $DOCKER_TAG .
 
-#docker build --build-arg RUNNABLE_SERVER_JAR=$RUNNABLE_SERVER_JAR -t $DOCKER_TAG .
-
+DOCKER_IMAGE_FILE="Paper-docker-image-"$MC_VERSION"-"$PAPER_BUILD".tar.gz"
+echo "Saving docker image to "$DOCKER_IMAGE_FILE
+docker save -o $DOCKER_IMAGE_FILE $DOCKER_TAG
 
 #mkdir uberjar
 #for jar in `cat jars.txt`; do
