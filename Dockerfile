@@ -7,14 +7,14 @@ RUN mkdir jar bundle workdir
 
 ADD $RUNNABLE_SERVER_JAR jar/paper.jar
 
-RUN java -DbundlerRepoDir=/data/bundle -Dpaperclip.patchonly=true -jar
+RUN java -DbundlerRepoDir=/data/bundle -Dpaperclip.patchonly=true -jar /data/jar/paper.jar
 
 ENV MAXMEM=1024M
 
 EXPOSE 25565
 VOLUME /data/workdir
 
-WORKDIR workdir
+WORKDIR /data/workdir
 CMD java -Xmx$MAXMEM -XX:+UseG1GC -XX:+ParallelRefProcEnabled \
     -XX:MaxGCPauseMillis=200 -XX:+UnlockExperimentalVMOptions \
     -XX:G1ReservePercent=15 -XX:G1NewSizePercent=20 -XX:G1MaxNewSizePercent=30 \
