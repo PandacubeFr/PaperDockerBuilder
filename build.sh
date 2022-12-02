@@ -1,8 +1,5 @@
 #!/bin/bash
 
-echo "Cleaning up working directory..."
-rm -r *
-
 URL_PROJECT='https://api.papermc.io/v2/projects/paper'
 
 echo "Getting Paper last build id for MC "$MC_VERSION"..."
