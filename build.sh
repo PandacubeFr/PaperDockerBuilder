@@ -51,7 +51,7 @@ curl -o $RUNNABLE_SERVER_JAR $DOWNLOAD_REOBF
 #find bundle/versions/ bundle/libraries/ -type f -name '*.jar' > jars.txt
 
 
-DOCKER_TAG="PandacubeFr/paper:"$MC_VERSION"-"$PAPER_BUILD
+DOCKER_TAG="pandacubefr/paper:"$MC_VERSION"-"$PAPER_BUILD
 echo "Building docker image with pre-downloaded and pre-patched files, with tag "$DOCKER_TAG
 docker build --build-arg RUNNABLE_SERVER_JAR=$RUNNABLE_SERVER_JAR -t $DOCKER_TAG .
 
