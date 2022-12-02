@@ -1,0 +1,70 @@
+#!/bin/bash
+
+echo "Cleaning up working directory..."
+rm -r *
+
+URL_PROJECT='https://api.papermc.io/v2/projects/paper'
+
+echo "Getting Paper last build id for MC "$MC_VERSION"..."
+
+URL_VERSION=$URL_PROJECT'/versions/'$MC_VERSION
+
+# get paper build version
+if ! curl -s $URL_VERSION -o version_infos.json; then
+	echo -e "Error: Can’t join API"
+    exit 1
+fi
+
+
+if ! jq -r '.builds[-1]' -e < version_infos.json > build_number.txt; then
+	echo -e "API returned an error (probably MC_VERSION is not valid)"
+    exit 1
+fi
+
+PAPER_BUILD=`cat build_number.txt`
+URL_BUILD=$URL_VERSION'/builds/'$PAPER_BUILD
+
+echo "Downloadling Paperclip for Paper-"$MC_VERSION"-"$PAPER_BUILD"..."
+
+DOWNLOAD_REOBF=$URL_BUILD'/downloads/paper-'$MC_VERSION'-'$PAPER_BUILD'.jar'
+
+# the runnable jar is actually paperclip
+RUNNABLE_SERVER_JAR='Paper-'$MC_VERSION'-'$PAPER_BUILD'.jar'
+#UBER_SERVER_JAR='Paper-uberjar-'$MC_VERSION'-'$PAPER_BUILD'.jar'
+
+curl -o $RUNNABLE_SERVER_JAR $DOWNLOAD_REOBF
+
+
+java -version
+
+# run it to generate final jar, but not launching the actual server (-v option)
+
+echo "Running Paperclip..."
+mkdir bundle
+(java -DbundlerRepoDir=bundle -jar ../$RUNNABLE_SERVER_JAR -v)
+
+
+# important that versions/ comes first. It will be extracted first,
+# and following extraction will not override any file
+find bundle/versions/ bundle/libraries/ -type f -name '*.jar' > jars.txt
+
+
+DOCKER_TAG="PandacubeFr/paper:"$MC_VERSION"-"$PAPER_BUILD
+
+#docker build --build-arg RUNNABLE_SERVER_JAR=$RUNNABLE_SERVER_JAR -t $DOCKER_TAG .
+
+
+#mkdir uberjar
+#for jar in `cat jars.txt`; do
+#  unzip -d uberjar -nq $jar
+#done
+
+#(
+#  cd uberjar
+#  # exclude some stuff, especially about jar signature and stuff
+#  rm -f META-INF/*.SF META-INF/*.DSA META-INF/*.RSA
+#  # create the uber jar
+#  zip -r '../'$UBER_SERVER_JAR *
+#)
+
+#mvn install:install-file -Dfile=$UBER_SERVER_JAR -DgroupId=io.papermc.paper -DartifactId=paper -Dversion=$MC_VERSION-$PAPER_BUILD-SNAPSHOT -Dpackaging=jar
