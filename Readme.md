@@ -4,7 +4,7 @@ Docker Compose Example
 version: "3"
 services:
   paper:
-    image: "pandacubefr/paper:(version)"
+    image: "cr.pandacube.fr/paper:(version)"
     container_name: (server name)
     stdin_open: true # docker run -i
     tty: true        # docker run -t

@@ -48,13 +48,16 @@ curl -o $RUNNABLE_SERVER_JAR $DOWNLOAD_REOBF
 #find bundle/versions/ bundle/libraries/ -type f -name '*.jar' > jars.txt
 
 
-DOCKER_TAG="pandacubefr/paper:"$MC_VERSION"-"$PAPER_BUILD
+DOCKER_TAG="cr.pandacube.fr/paper:"$MC_VERSION"-"$PAPER_BUILD
 echo "Building docker image with pre-downloaded and pre-patched files, with tag "$DOCKER_TAG
-docker build --build-arg RUNNABLE_SERVER_JAR=$RUNNABLE_SERVER_JAR -t $DOCKER_TAG -f Dockerfile.paper .
+docker build --build-arg RUNNABLE_SERVER_JAR=$RUNNABLE_SERVER_JAR -t $DOCKER_TAG .
 
-DOCKER_IMAGE_FILE="Paper-docker-"$MC_VERSION"-"$PAPER_BUILD".tar.gz"
-echo "Saving docker image to "$DOCKER_IMAGE_FILE
-docker save $DOCKER_TAG | gzip > $DOCKER_IMAGE_FILE
+#DOCKER_IMAGE_FILE="Paper-docker-"$MC_VERSION"-"$PAPER_BUILD".tar.gz"
+#echo "Saving docker image to "$DOCKER_IMAGE_FILE
+#docker save $DOCKER_TAG | gzip > $DOCKER_IMAGE_FILE
+
+echo "Pushing image to Pandacube’s container registry"
+docker push $DOCKER_TAG
 
 #mkdir uberjar
 #for jar in `cat jars.txt`; do

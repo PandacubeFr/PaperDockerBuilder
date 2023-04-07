@@ -1,6 +1,6 @@
 #!/bin/sh
 
-java -Xmx$MAXMEM -XX:+UseG1GC -XX:+ParallelRefProcEnabled \
+exec java -Xmx$MAXMEM -XX:+UseG1GC -XX:+ParallelRefProcEnabled \
     -XX:MaxGCPauseMillis=200 -XX:+UnlockExperimentalVMOptions \
     -XX:G1ReservePercent=15 -XX:G1NewSizePercent=20 -XX:G1MaxNewSizePercent=30 \
     -XX:G1HeapRegionSize=8M -XX:G1HeapWastePercent=5 -XX:G1MixedGCCountTarget=4 \
