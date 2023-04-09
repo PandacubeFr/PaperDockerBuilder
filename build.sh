@@ -8,7 +8,7 @@ URL_VERSION=$URL_PROJECT'/versions/'$MC_VERSION
 
 # get paper build version
 if ! curl -s $URL_VERSION -o version_infos.json; then
-	echo -e "Error: Can’t join API"
+	echo -e "Error: Can't join API"
     exit 1
 fi
 
@@ -34,42 +34,14 @@ echo "To "$RUNNABLE_SERVER_JAR
 curl -o $RUNNABLE_SERVER_JAR $DOWNLOAD_REOBF
 
 
-#java -version
-
-# run it to generate final jar, but not launching the actual server (-v option)
-
-#echo "Running Paperclip..."
-#mkdir bundle
-#java -DbundlerRepoDir=bundle -Dpaperclip.patchonly=true -jar $RUNNABLE_SERVER_JAR
-
-
-# important that versions/ comes first. It will be extracted first,
-# and following extraction will not override any file
-#find bundle/versions/ bundle/libraries/ -type f -name '*.jar' > jars.txt
-
-
 DOCKER_TAG="cr.pandacube.fr/paper:"$MC_VERSION"-"$PAPER_BUILD
+DOCKER_TAG_VERSION="cr.pandacube.fr/paper:"$MC_VERSION
 echo "Building docker image with pre-downloaded and pre-patched files, with tag "$DOCKER_TAG
 docker build --build-arg RUNNABLE_SERVER_JAR=$RUNNABLE_SERVER_JAR -t $DOCKER_TAG .
+docker tag $DOCKER_TAG $DOCKER_TAG_VERSION
 
-#DOCKER_IMAGE_FILE="Paper-docker-"$MC_VERSION"-"$PAPER_BUILD".tar.gz"
-#echo "Saving docker image to "$DOCKER_IMAGE_FILE
-#docker save $DOCKER_TAG | gzip > $DOCKER_IMAGE_FILE
 
-echo "Pushing image to Pandacube’s container registry"
+echo "Pushing image to Pandacube's container registry"
 docker push $DOCKER_TAG
+docker push $DOCKER_TAG_VERSION
 
-#mkdir uberjar
-#for jar in `cat jars.txt`; do
-#  unzip -d uberjar -nq $jar
-#done
-
-#(
-#  cd uberjar
-#  # exclude some stuff, especially about jar signature and stuff
-#  rm -f META-INF/*.SF META-INF/*.DSA META-INF/*.RSA
-#  # create the uber jar
-#  zip -r '../'$UBER_SERVER_JAR *
-#)
-
-#mvn install:install-file -Dfile=$UBER_SERVER_JAR -DgroupId=io.papermc.paper -DartifactId=paper -Dversion=$MC_VERSION-$PAPER_BUILD-SNAPSHOT -Dpackaging=jar
