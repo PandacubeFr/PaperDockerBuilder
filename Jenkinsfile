@@ -82,6 +82,7 @@ pipeline {
     post {
         cleanup {
             cleanWs()
+            sh "docker image rm ${docker_tag} ${docker_tag_version}"
         }
     }
 }
