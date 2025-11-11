@@ -2,7 +2,16 @@
 
 Jenkins pipeline to build a Docker image of Paper.
 
+## Disclaimer
+
+This project is not meant to provide an already working docker image containing Paper, due to licensing reason with the MC source code.
+
+You have to install the Jenkins pipeline yourself, or run the `build.sh` script provided.
+
+## Project structure
+
 ```bash
+build.sh    # build the image in a standalone way (not used by the pipeline)
 Dockerfile  # used to build the Docker image
 Jenkinsfile # the pipeline file
 Readme.md   # you are reading this file
@@ -19,11 +28,9 @@ run.sh      # entrypoint of the Docker image
 ## Docker Compose Example
 
 ```yml
-version: "3"
 services:
-  paper:
+  server:
     image: "cr.pandacube.fr/paper:(version)"
-    container_name: (server name)
     stdin_open: true # docker run -i
     tty: true        # docker run -t
     user: "1000:1000" # uid and gid of owner of working dir 
