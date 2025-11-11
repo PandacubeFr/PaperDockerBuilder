@@ -19,8 +19,11 @@ pipeline {
     }
 
     environment {
-        URL_BASE = 'https://api.papermc.io/v2/projects/paper'
-        URL_VERSION_INFOS = "${URL_BASE}/versions/${params.MC_VERSION}"
+        APP_GIT_COMMIT = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+        USER_AGENT = "PaperDockerBuilder/${APP_GIT_COMMIT} (https://github.com/PandacubeFr/PaperDockerBuilder)"
+
+        URL_BASE = 'https://fill.papermc.io/v3/projects/paper'
+        URL_BUILD_INFOS = "${URL_BASE}/versions/${params.MC_VERSION}/builds/latest"
 
         DOCKER_TAG_BASE = 'cr.pandacube.fr/paper'
         DOCKER_REGISTRY_URL = 'https://cr.pandacube.fr'
@@ -31,25 +34,33 @@ pipeline {
 
         stage('Get build data') {
             steps {
-                sh "curl -L -s '$URL_VERSION_INFOS' -o version_infos.json"
+                sh "curl -A '$USER_AGENT' -L -s '$URL_BUILD_INFOS' -o build_infos.json"
                 script {
-                    def version_infos = readJSON file: 'version_infos.json'
+                    def build_infos = readJSON file: 'build_infos.json'
                     
                     app_version = params.MC_VERSION
-                    app_build = version_infos.builds[-1]
-                    url_download = "${URL_VERSION_INFOS}/builds/${app_build}/downloads/paper-${app_version}-${app_build}.jar"
-                    app_filename = "Paper-${MC_VERSION}-${app_build}.jar"
+                    app_build = build_infos.id
+                    app_channel = build_infos.channel
+                    url_download = build_infos.downloads['server:default'].url
+                    app_filename = "Paper-${app_version}-${app_build}.jar"
 
                     docker_tag = "${DOCKER_TAG_BASE}:${app_version}-${app_build}"
                     docker_tag_version = "${DOCKER_TAG_BASE}:${app_version}"
                 }
                 echo "Paper version ${app_version} build #${app_build}"
+
+                script {
+                    if (app_channel != 'STABLE' && app_channel != 'RECOMMENDED') {
+                        unstable("Build #${app_build} of Paper ${app_version} has status '${app_channel}'.")
+                    }
+                }
+
             }
         }
 
         stage('Download jar') {
             steps {
-                sh "curl -L -o '$app_filename' '$url_download'"
+                sh "curl -A '$USER_AGENT' -L -o '$app_filename' '$url_download'"
             }
             post {
                 success {
