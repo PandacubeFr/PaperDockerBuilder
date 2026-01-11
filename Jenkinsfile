@@ -118,6 +118,9 @@ pipeline {
                             }
                         }
                         stage('Install Patched jar in Maven local repository') {
+                            tools {
+                                maven 'Maven 3.9.5' 
+                            }
                             steps {
                                 script {
                                     sh "mvn install:install-file -Dfile=./${patched_jar_filename} -DgroupId=io.papermc.paper -DartifactId=paper-server -Dversion=${api_version} -Dpackaging=jar"
