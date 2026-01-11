@@ -10,6 +10,8 @@ def url_download
 def app_filename
 def docker_tag
 def docker_tag_latest
+def api_version
+def patched_jar_filename
 
 pipeline {
     agent any
@@ -72,17 +74,6 @@ pipeline {
             }
         }
 
-        
-        stage('Extract API Version') {
-            steps {
-                script {
-                    def apiVersion = sh(script: "unzip -p ${app_filename} META-INF/libraries.list | grep 'io.papermc.paper:paper-api:' | head -n 1 | awk '{print \$2}' | cut -d':' -f3", returnStdout: true).trim()
-                    env.API_VERSION = apiVersion
-                    echo "Paper API Version is: ${apiVersion}"
-                }
-            }
-        }
-
         stage('Build Docker image') {
             steps {
                 script {
@@ -105,14 +96,23 @@ pipeline {
                     }
                 }
 
-                stage('Extract and Install Patched Jar in Maven local repository') {
+                stage('Patched Jar') {
                     stages {
+
+                        stage('Extract API Version') {
+                            steps {
+                                script {
+                                    api_version = sh(script: "unzip -p ${app_filename} META-INF/libraries.list | grep 'io.papermc.paper:paper-api:' | head -n 1 | awk '{print \$2}' | cut -d':' -f3", returnStdout: true).trim()
+                                    patched_jar_filename = "paper-server-${api_version}.jar"
+                                    echo "Paper API Version is: ${api_version}"
+                                }
+                            }
+                        }
                         stage('Extract Patched jar') {
                             steps {
                                 script {
-                                    def patchedJar = "paper-server-${env.API_VERSION}.jar"
                                     def tempContainerId = sh(script: "docker create ${docker_tag}", returnStdout: true).trim()
-                                    sh "docker cp ${tempContainerId}:/data/bundle/versions/${app_version}/paper-${app_version}.jar ./${patchedJar}"
+                                    sh "docker cp ${tempContainerId}:/data/bundle/versions/${app_version}/paper-${app_version}.jar ./${patched_jar_filename}"
                                     sh "docker rm ${tempContainerId}"
                                 }
                             }
@@ -120,7 +120,7 @@ pipeline {
                         stage('Install Patched jar in Maven local repository') {
                             steps {
                                 script {
-                                    sh "mvn install:install-file -Dfile=./${patchedJar} -DgroupId=io.papermc.paper -DartifactId=paper-server -Dversion=${env.API_VERSION} -Dpackaging=jar"
+                                    sh "mvn install:install-file -Dfile=./${patched_jar_filename} -DgroupId=io.papermc.paper -DartifactId=paper-server -Dversion=${api_version} -Dpackaging=jar"
                                 }
                             }
                         }
