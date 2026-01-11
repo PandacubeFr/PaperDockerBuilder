@@ -66,6 +66,20 @@ pipeline {
                 success {
                     archiveArtifacts artifacts: 'Paper-*.jar', fingerprint: true
                 }
+                unstable {
+                    archiveArtifacts artifacts: 'Paper-*.jar', fingerprint: true
+                }
+            }
+        }
+
+        
+        stage('Extract API Version') {
+            steps {
+                script {
+                    def apiVersion = sh(script: "unzip -p ${app_filename} META-INF/libraries.list | grep 'io.papermc.paper:paper-api:' | head -n 1 | awk '{print \$2}' | cut -d':' -f3", returnStdout: true).trim()
+                    env.API_VERSION = apiVersion
+                    echo "Paper API Version is: ${apiVersion}"
+                }
             }
         }
 
@@ -74,20 +88,61 @@ pipeline {
                 script {
                     docker.build(docker_tag, "--build-arg RUNNABLE_SERVER_JAR=$app_filename .")
                 }
-                sh "docker tag ${docker_tag} ${docker_tag_version}"
             }
         }
 
-        stage('Push Docker image') {
-            steps {
-                script {
-                    docker.withRegistry(DOCKER_REGISTRY_URL, DOCKER_REGISTRY_CREDENTIALS) {
-                        docker.image(docker_tag).push()
-                        docker.image(docker_tag_version).push()
+        stage('Parallel stages') {
+            parallel {
+                stage('Push Docker image') {
+                    steps {
+                        sh "docker tag ${docker_tag} ${docker_tag_version}"
+                        script {
+                            docker.withRegistry(DOCKER_REGISTRY_URL, DOCKER_REGISTRY_CREDENTIALS) {
+                                docker.image(docker_tag).push()
+                                docker.image(docker_tag_version).push()
+                            }
+                        }
+                    }
+                }
+
+                stage('Extract and Install Patched Jar in Maven local repository') {
+                    stages {
+                        stage('Extract Patched jar') {
+                            steps {
+                                script {
+                                    def patchedJar = "paper-server-${env.API_VERSION}.jar"
+                                    def tempContainerId = sh(script: "docker create ${docker_tag}", returnStdout: true).trim()
+                                    sh "docker cp ${tempContainerId}:/data/bundle/versions/${app_version}/paper-${app_version}.jar ./${patchedJar}"
+                                    sh "docker rm ${tempContainerId}"
+                                }
+                            }
+                        }
+                        stage('Install Patched jar in Maven local repository') {
+                            steps {
+                                script {
+                                    sh "mvn install:install-file -Dfile=./${patchedJar} -DgroupId=io.papermc.paper -DartifactId=paper-server -Dversion=${env.API_VERSION} -Dpackaging=jar"
+                                }
+                            }
+                        }
+                    }
+                    post {
+                        success {
+                            archiveArtifacts artifacts: 'paper-server-*.jar', fingerprint: true
+                        }
+                        unstable {
+                            archiveArtifacts artifacts: 'paper-server-*.jar', fingerprint: true
+                        }
                     }
                 }
             }
         }
+
+        
+
+
+
+
+        
     }
 
     post {

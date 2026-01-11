@@ -4,7 +4,7 @@ Jenkins pipeline to build a Docker image of Paper.
 
 ## Disclaimer
 
-This project is not meant to provide an already working Docker image containing Paper, due to licensing reason with the MC source code.
+This project is not meant to publicly provide an already working Docker image containing Paper, due to licensing reason with the MC source code.
 
 The image tag used in the pipeline is not publicly accessible. Please change the tag before running the script or pipeline by yourself.
 
@@ -22,8 +22,10 @@ run.sh      # entrypoint of the Docker image
 
 1. Fetches the information about the latest build of Paper for the provided MC version, from the [PaperMC API](https://api.papermc.io/v2/projects/paper)
 2. Downloads the Paper jar file.
-3. Builds the docker image with the downloaded jar and the entrypoint script, ensuring libraries are downloaded and Paper patch is applied.
-4. Pushes the image to the container registry with the tags `$mc_version` (e.g. `1.20.1`) and `$mc_version-$paper_build` (e.g. `1.20.1-196`)
+3. Fetches the Paper API version from the jar content (e.g. `1.20.1-R0.1-SNAPSHOT`).
+4. Builds the docker image with the downloaded jar and the entrypoint script, ensuring libraries are downloaded and Paper patch is applied.
+5. Extracts the patched jar from the docker image, and intalls it to the local maven repo (using the api version fetched above)
+6. Pushes the image to the container registry with the tags `$mc_version` (e.g. `1.20.1`) and `$mc_version-$paper_build` (e.g. `1.20.1-196`)
 
 ## Docker Compose Example
 
