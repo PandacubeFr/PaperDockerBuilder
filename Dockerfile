@@ -1,4 +1,6 @@
-FROM eclipse-temurin:21-jdk-alpine
+# defaults to last JDK version if argument not provided
+ARG JDK_TAG=eclipse-temurin:jdk-alpine
+FROM ${JDK_TAG}
 
 ARG RUNNABLE_SERVER_JAR
 

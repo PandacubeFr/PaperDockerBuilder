@@ -1,0 +1,5 @@
+{
+    "17": "eclipse-temurin:17-jdk-alpine",
+    "21": "eclipse-temurin:21-jdk-alpine",
+    "25": "eclipse-temurin:25-jdk-alpine"
+}

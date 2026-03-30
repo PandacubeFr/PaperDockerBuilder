@@ -25,6 +25,7 @@ pipeline {
         USER_AGENT = "PaperDockerBuilder/${APP_GIT_COMMIT} (https://github.com/PandacubeFr/PaperDockerBuilder)"
 
         URL_BASE = 'https://fill.papermc.io/v3/projects/paper'
+        URL_VERSION_INFOS = "${URL_BASE}/versions/${params.MC_VERSION}"
         URL_BUILD_INFOS = "${URL_BASE}/versions/${params.MC_VERSION}/builds/latest"
 
         DOCKER_TAG_BASE = 'cr.pandacube.fr/paper'
@@ -36,6 +37,7 @@ pipeline {
 
         stage('Get build data') {
             steps {
+                sh "curl -A '$USER_AGENT' -L -s '$URL_VERSION_INFOS' -o version_infos.json"
                 sh "curl -A '$USER_AGENT' -L -s '$URL_BUILD_INFOS' -o build_infos.json"
                 script {
                     def build_infos = readJSON file: 'build_infos.json'
@@ -77,7 +79,18 @@ pipeline {
         stage('Build Docker image') {
             steps {
                 script {
-                    docker.build(docker_tag, "--build-arg RUNNABLE_SERVER_JAR=$app_filename .")
+                    def jdk_versions = readJSON file: 'jdk_versions.json'
+                    def version_infos = readJSON file: 'version_infos.json'
+                    def jdk_version = version_infos['version']['java']['version']['minimum'].toString() // Get the minimum supported Java version
+
+                    if (!jdk_versions.containsKey(jdk_version)) {
+                        error("JDK version ${jdk_version} is not listed in jdk_versions.json. Please update the file with the appropriate Docker image for JDK ${jdk_version}.")
+                    }
+                    else {
+                        def jdk_tag = jdk_versions[jdk_version]
+                        print("Using base image ${jdk_tag} to build the Paper Docker image.")
+                        docker.build(docker_tag, "--build-arg RUNNABLE_SERVER_JAR=${app_filename} --build-arg JDK_TAG=${jdk_tag} .")
+                    }
                 }
             }
         }

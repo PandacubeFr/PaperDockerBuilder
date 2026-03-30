@@ -16,16 +16,37 @@ APP_GIT_COMMIT=$(git rev-parse --short HEAD)
 USER_AGENT="PaperDockerBuilder/${APP_GIT_COMMIT} (https://github.com/PandacubeFr/PaperDockerBuilder)"
 
 URL_BASE="https://fill.papermc.io/v3/projects/paper"
+URL_VERSION_INFOS="${URL_BASE}/versions/${MC_VERSION}"
 URL_BUILD_INFOS="${URL_BASE}/versions/${MC_VERSION}/builds/latest"
 
 DOCKER_TAG_BASE="cr.pandacube.fr/paper"
 
 echo "=== Getting build data ==="
+curl -A "$USER_AGENT" -L -s "$URL_VERSION_INFOS" -o version_infos.json
 curl -A "$USER_AGENT" -L -s "$URL_BUILD_INFOS" -o build_infos.json
 
 APP_BUILD=$(jq -r '.id' build_infos.json)
 URL_DOWNLOAD=$(jq -r '.downloads["server:default"].url' build_infos.json)
 APP_FILENAME="Paper-${MC_VERSION}-${APP_BUILD}.jar"
+
+# Resolve required JDK version and matching base image
+JDK_VERSION=$(jq -r '.version.java.version.minimum' version_infos.json)
+if [ -z "$JDK_VERSION" ] || [ "$JDK_VERSION" = "null" ]; then
+    echo "Error: Unable to determine minimum JDK version from version_infos.json"
+    exit 1
+fi
+
+# Read mapping from jdk_versions.json to get the Docker base image tag
+if [ ! -f jdk_versions.json ]; then
+    echo "Error: jdk_versions.json not found in workspace"
+    exit 1
+fi
+JDK_TAG=$(jq -r --arg v "$JDK_VERSION" '.[$v] // empty' jdk_versions.json)
+if [ -z "$JDK_TAG" ]; then
+    echo "Error: JDK version ${JDK_VERSION} is not listed in jdk_versions.json."
+    echo "Please update jdk_versions.json with a Docker base image for JDK ${JDK_VERSION}."
+    exit 1
+fi
 
 DOCKER_TAG="${DOCKER_TAG_BASE}:${MC_VERSION}-${APP_BUILD}"
 DOCKER_TAG_VERSION="${DOCKER_TAG_BASE}:${MC_VERSION}"
@@ -44,7 +65,11 @@ echo "Paper API Version is: $API_VERSION"
 
 echo ""
 echo "=== Building Docker image ==="
-docker build -t "$DOCKER_TAG" --build-arg RUNNABLE_SERVER_JAR="$APP_FILENAME" .
+echo "Using base image: ${JDK_TAG} (for JDK ${JDK_VERSION})"
+docker build -t "$DOCKER_TAG" \
+    --build-arg RUNNABLE_SERVER_JAR="$APP_FILENAME" \
+    --build-arg JDK_TAG="$JDK_TAG" \
+    .
 docker tag "$DOCKER_TAG" "$DOCKER_TAG_VERSION"
 
 
