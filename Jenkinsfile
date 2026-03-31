@@ -9,7 +9,7 @@ def app_build
 def url_download
 def app_filename
 def docker_tag
-def docker_tag_latest
+def docker_tag_version
 def api_version
 def patched_jar_filename
 
@@ -44,19 +44,20 @@ pipeline {
                     
                     app_version = params.MC_VERSION
                     app_build = build_infos.id
-                    app_channel = build_infos.channel
+                    def app_channel = build_infos.channel
+                    
                     url_download = build_infos.downloads['server:default'].url
                     app_filename = "Paper-${app_version}-${app_build}.jar"
 
                     docker_tag = "${DOCKER_TAG_BASE}:${app_version}-${app_build}"
                     docker_tag_version = "${DOCKER_TAG_BASE}:${app_version}"
-                }
-                echo "Paper version ${app_version} build #${app_build}"
 
-                script {
+                    echo "Paper version ${app_version} build #${app_build}"
+
                     if (app_channel != 'STABLE' && app_channel != 'RECOMMENDED') {
                         unstable("Build #${app_build} of Paper ${app_version} has status '${app_channel}'.")
                     }
+
                 }
 
             }
