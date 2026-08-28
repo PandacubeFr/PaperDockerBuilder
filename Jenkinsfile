@@ -44,8 +44,8 @@ pipeline {
         stage('Get build data') {
             steps {
                 script {
-                    version_infos = readJSON text: sh(script:  "curl -A '$USER_AGENT' -L -s '$URL_VERSION_INFOS' -o version_infos.json", returnStdout: true).trim()
-                    build_infos = readJSON text: sh(script:  "curl -A '$USER_AGENT' -L -s '$URL_BUILD_INFOS' -o build_infos.json", returnStdout: true).trim()
+                    version_infos = readJSON text: sh(script:  "curl -A '$USER_AGENT' -L -s '$URL_VERSION_INFOS'", returnStdout: true).trim()
+                    build_infos = readJSON text: sh(script:  "curl -A '$USER_AGENT' -L -s '$URL_BUILD_INFOS'", returnStdout: true).trim()
                 }
                 script {
                     app_version = params.MC_VERSION
