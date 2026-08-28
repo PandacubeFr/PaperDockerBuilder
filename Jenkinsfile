@@ -15,7 +15,7 @@ def patched_jar_filename
 def version_infos
 def build_infos
 def libraries_to_include_in_pom = [
-    Tuple.tuple("io.netty", "netty-buffer")
+    ["io.netty", "netty-buffer"]
 ]
 def server_libs_to_include_in_pom
 
