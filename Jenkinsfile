@@ -12,6 +12,12 @@ def docker_tag
 def docker_tag_version
 def api_version
 def patched_jar_filename
+def version_infos
+def build_infos
+def libraries_to_include_in_pom = [
+    Tuple.tuple("io.netty", "netty-buffer")
+]
+def server_libs_to_include_in_pom
 
 pipeline {
     agent any
@@ -37,11 +43,11 @@ pipeline {
 
         stage('Get build data') {
             steps {
-                sh "curl -A '$USER_AGENT' -L -s '$URL_VERSION_INFOS' -o version_infos.json"
-                sh "curl -A '$USER_AGENT' -L -s '$URL_BUILD_INFOS' -o build_infos.json"
                 script {
-                    def build_infos = readJSON file: 'build_infos.json'
-                    
+                    version_infos = readJSON text: sh(script:  "curl -A '$USER_AGENT' -L -s '$URL_VERSION_INFOS' -o version_infos.json", returnStdout: true).trim()
+                    build_infos = readJSON text: sh(script:  "curl -A '$USER_AGENT' -L -s '$URL_BUILD_INFOS' -o build_infos.json", returnStdout: true).trim()
+                }
+                script {
                     app_version = params.MC_VERSION
                     app_build = build_infos.id
                     def app_channel = build_infos.channel
@@ -81,7 +87,6 @@ pipeline {
             steps {
                 script {
                     def jdk_versions = readJSON file: 'jdk_versions.json'
-                    def version_infos = readJSON file: 'version_infos.json'
                     def jdk_version = version_infos['version']['java']['version']['minimum'].toString() // Get the minimum supported Java version
 
                     if (!jdk_versions.containsKey(jdk_version)) {
@@ -113,31 +118,43 @@ pipeline {
                 stage('Patched Jar') {
                     stages {
 
-                        stage('Extract API Version') {
+                        stage('Extract API and libraries versions') {
                             steps {
                                 script {
-                                    api_version = sh(script: "unzip -p ${app_filename} META-INF/libraries.list | grep 'io.papermc.paper:paper-api:' | head -n 1 | awk '{print \$2}' | cut -d':' -f3", returnStdout: true).trim()
+                                    def libraries_list_content = sh(script: "unzip -p ${app_filename} META-INF/libraries.list", returnStdout: true).trim()
+                                    def libraries = Library.list_from_string(libraries_list_content: libraries_list_content)
+                                    def paper_api_library = Library.find_library(libraries, "io.papermc.paper", "paper-api")
+                                    
+                                    api_version = paper_api_library?.version ?: ""
                                     patched_jar_filename = "paper-server-${api_version}.jar"
                                     echo "Paper API Version is: ${api_version}"
+
+                                    server_libs_to_include_in_pom = libraries_to_include_in_pom.collect { lib ->
+                                        def found_lib = Library.find_library(libraries, lib[0], lib[1])
+                                        if (found_lib) {
+                                            return found_lib
+                                        } else {
+                                            error("Required library ${lib[0]}:${lib[1]} not found in the libraries.list.")
+                                        }
+                                    }
                                 }
                             }
                         }
-                        stage('Extract Patched jar') {
+                        stage('Extract and install Patched jar in Maven local repository') {
+                            tools {
+                                maven 'Maven 3.9.5' 
+                            }
                             steps {
                                 script {
                                     def tempContainerId = sh(script: "docker create ${docker_tag}", returnStdout: true).trim()
                                     sh "docker cp ${tempContainerId}:/data/bundle/versions/${app_version}/paper-${app_version}.jar ./${patched_jar_filename}"
                                     sh "docker rm ${tempContainerId}"
                                 }
-                            }
-                        }
-                        stage('Install Patched jar in Maven local repository') {
-                            tools {
-                                maven 'Maven 3.9.5' 
-                            }
-                            steps {
                                 script {
-                                    sh "mvn install:install-file -Dfile=./${patched_jar_filename} -DgroupId=io.papermc.paper -DartifactId=paper-server -Dversion=${api_version} -Dpackaging=jar"
+                                    def pom_content = generate_pom_xml("io.papermc.paper", "paper-server", api_version, dependencies: server_libs_to_include_in_pom)
+                                    def pom_name = "generated_pom-${api_version}.xml"
+                                    writeFile file: pom_name, text: pom_content
+                                    sh "mvn install:install-file -Dfile=./${patched_jar_filename} -DpomFile=./${pom_name}"
                                 }
                             }
                         }
@@ -155,10 +172,6 @@ pipeline {
         }
 
         
-
-
-
-
         
     }
 
@@ -168,4 +181,64 @@ pipeline {
             sh "docker image rm ${docker_tag} ${docker_tag_version}"
         }
     }
+}
+
+
+class Library {
+    String groupId
+    String artifactId
+    String version
+
+    Library(String groupId, String artifactId, String version) {
+        this.groupId = groupId
+        this.artifactId = artifactId
+        this.version = version
+    }
+
+    static Library from_string(library_line: String) {
+        def lib_params = library_line.split()
+        def parts = lib_params[1].split(":", 2)
+        if (parts.length != 3) {
+            throw new IllegalArgumentException("Invalid library string format: ${library_line} ${parts.length}")
+        }
+        return new Library(parts[0], parts[1], parts[2])
+    }
+
+    static List<Library> list_from_string(libraries_list_content: String) {
+        def libraries = []
+        libraries_list_content.eachLine { line ->
+            if (line.trim()) {
+                libraries.add(Library.from_string(line))
+            }
+        }
+        return libraries
+    }
+
+    static Library find_library(libraries: List<Library>, groupId: String, artifactId: String) {
+        return libraries.find { it.groupId == groupId && it.artifactId == artifactId }
+    }
+}
+
+
+def generate_pom_xml(groupId, artifactId, version, dependencies: List<Library>) {
+    def dependencies_xml = dependencies.collect { lib ->
+        """
+        <dependency>
+            <groupId>${lib.groupId}</groupId>
+            <artifactId>${lib.artifactId}</artifactId>
+            <version>${lib.version}</version>
+        </dependency>
+        """
+    }.join("")
+
+    return """
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>${groupId}</groupId>
+    <artifactId>${artifactId}</artifactId>
+    <version>${version}</version>
+    <dependencies>
+        ${dependencies_xml}
+    </dependencies>
+</project>"""
 }
