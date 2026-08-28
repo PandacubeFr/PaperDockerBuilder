@@ -195,15 +195,17 @@ class Library {
         this.version = version
     }
 
+    @NonCPS
     static Library from_string(String library_line) {
         def lib_params = library_line.split()
-        def parts = lib_params[1].split(":", 2)
+        def parts = lib_params[1].split(":", 3)
         if (parts.length != 3) {
             throw new IllegalArgumentException("Invalid library string format: ${library_line} ${parts.length}")
         }
         return new Library(parts[0], parts[1], parts[2])
     }
 
+    @NonCPS
     static List<Library> list_from_string(String libraries_list_content) {
         def libraries = []
         libraries_list_content.eachLine { line ->
