@@ -122,7 +122,7 @@ pipeline {
                             steps {
                                 script {
                                     def libraries_list_content = sh(script: "unzip -p ${app_filename} META-INF/libraries.list", returnStdout: true).trim()
-                                    def libraries = Library.list_from_string(libraries_list_content: libraries_list_content)
+                                    def libraries = Library.list_from_string(libraries_list_content)
                                     def paper_api_library = Library.find_library(libraries, "io.papermc.paper", "paper-api")
                                     
                                     api_version = paper_api_library?.version ?: ""
@@ -151,7 +151,7 @@ pipeline {
                                     sh "docker rm ${tempContainerId}"
                                 }
                                 script {
-                                    def pom_content = generate_pom_xml("io.papermc.paper", "paper-server", api_version, dependencies: server_libs_to_include_in_pom)
+                                    def pom_content = generate_pom_xml("io.papermc.paper", "paper-server", api_version, server_libs_to_include_in_pom)
                                     def pom_name = "generated_pom-${api_version}.xml"
                                     writeFile file: pom_name, text: pom_content
                                     sh "mvn install:install-file -Dfile=./${patched_jar_filename} -DpomFile=./${pom_name}"
@@ -195,7 +195,7 @@ class Library {
         this.version = version
     }
 
-    static Library from_string(library_line: String) {
+    static Library from_string(String library_line) {
         def lib_params = library_line.split()
         def parts = lib_params[1].split(":", 2)
         if (parts.length != 3) {
@@ -204,7 +204,7 @@ class Library {
         return new Library(parts[0], parts[1], parts[2])
     }
 
-    static List<Library> list_from_string(libraries_list_content: String) {
+    static List<Library> list_from_string(String libraries_list_content) {
         def libraries = []
         libraries_list_content.eachLine { line ->
             if (line.trim()) {
@@ -214,13 +214,13 @@ class Library {
         return libraries
     }
 
-    static Library find_library(libraries: List<Library>, groupId: String, artifactId: String) {
+    static Library find_library(List<Library> libraries, String groupId, String artifactId) {
         return libraries.find { it.groupId == groupId && it.artifactId == artifactId }
     }
 }
 
 
-def generate_pom_xml(groupId, artifactId, version, dependencies: List<Library>) {
+def generate_pom_xml(groupId, artifactId, version, List<Library> dependencies) {
     def dependencies_xml = dependencies.collect { lib ->
         """
         <dependency>
