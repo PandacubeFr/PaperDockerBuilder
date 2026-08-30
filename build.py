@@ -7,6 +7,7 @@ Usage: python build.py <MC_VERSION>
 import json
 import subprocess
 import sys
+import traceback
 import urllib.request
 import zipfile
 from pathlib import Path
@@ -70,7 +71,7 @@ class Library:
         lib_params = library_line.split()
         parts = lib_params[1].split(":", 2)
         if len(parts) != 3:
-            raise ValueError(f"Invalid library string format: {library_line} {len(parts)}")
+            raise ValueError(f"Invalid library string format: {library_line}")
         return Library(parts[0], parts[1], parts[2], lib_params[2])
 
     @staticmethod
@@ -220,7 +221,8 @@ def main() -> int:
 
     print("\n=== Installing Paper patched jar on local Maven repository ===")
 
-    run_command("mvn", "install:install-file", f"-Dfile=./{paper_server_filename}", f"-DpomFile=./{pom_name}")
+    run_command("mvn.cmd" if sys.platform == "win32" else "mvn",
+                "install:install-file", f"-Dfile=./{paper_server_filename}", f"-DpomFile=./{pom_name}")
 
     print("\nDocker images built successfully:")
     print(f"  - {docker_tag}")
@@ -235,5 +237,5 @@ if __name__ == "__main__":
     try:
         raise SystemExit(main())
     except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
-        raise SystemExit(1) from e
+        print(f"Error: {traceback.format_exc()}", file=sys.stderr)
+        raise SystemExit(1)
