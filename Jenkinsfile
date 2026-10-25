@@ -142,7 +142,7 @@ pipeline {
                         }
                         stage('Extract and install Patched jar in Maven local repository') {
                             tools {
-                                maven 'Maven 3.9.5' 
+                                maven 'maven-3.9'
                             }
                             steps {
                                 script {
