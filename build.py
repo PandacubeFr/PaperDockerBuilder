@@ -19,6 +19,9 @@ WORKSPACE = Path(__file__).resolve().parent
 LIBRARIES_TO_INCLUDE_IN_POM = [
     ("io.netty", "netty-buffer")
 ]
+LIBRARIES_TO_SHOW_IN_LOGS = [
+    ("com.mojang", "datafixerupper")
+]
 
 
 def run_command(*command: str, capture_output: bool = False) -> str:
@@ -175,8 +178,9 @@ def main() -> int:
     sever_libs_to_include_in_pom: list[Library] = [lib
                                 for l in LIBRARIES_TO_INCLUDE_IN_POM
                                 if (lib := Library.find_library(libraries, l[0], l[1]))]
-    for lib in sever_libs_to_include_in_pom:
-        print(f"Library data {lib.group}:{lib.artifact}:{lib.version}.")
+    sever_libs_to_show_in_logs: list[Library] = [lib
+                                for l in LIBRARIES_TO_SHOW_IN_LOGS
+                                if (lib := Library.find_library(libraries, l[0], l[1]))]
 
 
 
@@ -229,6 +233,11 @@ def main() -> int:
     print(f"  - {docker_tag_version}")
     print("\nPaper patched jar installed successfully on local Maven repository:")
     print(f"  - io.papermc.paper:paper-server:{api_lib.version}")
+
+    
+    print("\nSome useful library informations:")
+    for lib in sever_libs_to_include_in_pom + sever_libs_to_show_in_logs:
+        print(f"  - {lib.group}:{lib.artifact}:{lib.version}")
 
     return 0
 
